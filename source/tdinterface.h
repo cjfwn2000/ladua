@@ -13,8 +13,9 @@ typedef struct _tdi {
  * 그 객체를 가지고 TDI_read 등등의 입출력 기능을 이용할 수 있습니다. 
  * 더 이상 이용하지 않을 때 TDI_close로 마무리해줘야 합니다. 
  * @param tdi 초기화 대상 객체
+ * @param devfile 해당 기기 파일 이름 (e.g. "/dev/ttyACM0")
  * @returns 성공시 0, 실패시 Non-zero
  */
-int TDI_open(TDInterface * tdi);
+int TDI_open(TDInterface * tdi, const char * devfile);
 
 int TDI_read(TDInterface * tdi, char * bigbuf);

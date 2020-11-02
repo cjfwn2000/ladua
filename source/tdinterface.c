@@ -13,13 +13,12 @@
 
 // -- Public functions -----------------
 
-int TDI_open(TDInterface * tdi)
+int TDI_open(TDInterface * tdi, const char * devfile)
 {
-    char portname[] = "/dev/ttyACM0";
     int fd;  //file descriptor to the serial port
 
     // Opening
-    fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
+    fd = open(devfile, O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0) {  //could not open the serial port
         fprintf(stderr, "Error opening the serial port.\n");
         return -1;
