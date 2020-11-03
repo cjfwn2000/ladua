@@ -1,8 +1,9 @@
+#include <stdio.h>
+
 
 int main(int argc, char ** argv) {
     
-
-    
+    printf("%s on line.\n", argv[0]);
     
     return 0;
 }

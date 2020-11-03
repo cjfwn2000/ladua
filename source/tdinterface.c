@@ -9,6 +9,13 @@
 
 // -- Private functions ----------------
 
+/**
+ * @returns Non-zero on failure
+ */
+int _setInterfaceAttr()
+{
+    return -1;
+}
 
 
 // -- Public functions -----------------
@@ -24,9 +31,14 @@ int TDI_open(TDInterface * tdi, const char * devfile)
         return -1;
     }
     // Setting the interface attributes (e.g. baud rate)
-    if(_setInterfaceAttr(fd)) {
+    if(_setInterfaceAttr(fd) != 0) {
         fprintf(stderr, "Failed setInterfaceAttr.\n");
     }
+
+    return -1;
 }
 
-int TDI_read(TDInterface * tdi, char * bigbuf);
+int TDI_read(TDInterface * tdi, char * bigbuf)
+{
+    return -1;
+}
