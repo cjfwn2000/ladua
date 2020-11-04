@@ -11,5 +11,5 @@ typedef struct _TdevChannel {
 
 void TdevChannel_init(TdevChannel * t, const char * filepath, int baudrate)
 {
-    
+    int fd = open(name, O_RDWR)
 }
