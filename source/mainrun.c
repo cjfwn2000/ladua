@@ -2,10 +2,11 @@
 #include "tdevchannel.h"
 
 #define SS_TDEV_FILE "/dev/ttyACM0"
-#define SS_TDEV_BAUD 115200
+#define SS_TDEV_BAUD B115200
 
 int main(int argc, char ** argv)
 {
+    int rc;
     TdevChannel tdchan;
     //ClientChannel clchan;
 
@@ -13,14 +14,20 @@ int main(int argc, char ** argv)
     logInfo("%s on line.", argv[0]);
     
     // UNIT TEST BED
-    char buf_td[256] = '\0';
+    char buf_td[256] = {'\0', };
     int i, n;
-    TdevChannel_init(&tdchan, SS_TDEV_FILE, SS_TDEV_BAUD);
+    if(rc = TdevChannel_init(&tdchan, SS_TDEV_FILE, SS_TDEV_BAUD))
+    {
+        logInfo("Error on init tdev (%d)", rc);
+        logInfo("Please check if you are on root previlege.");
+        return 1;
+    }
     for(i=0; i<5; i++)
     {
         logInfo("Recv %d", i);
         n = TdevChannel_recv(&tdchan, buf_td, sizeof buf_td - 1);
         logInfo("(%d) %s", n, buf_td);
+        usleep(1200);
     }
     TdevChannel_finish(&tdchan);
     ////
