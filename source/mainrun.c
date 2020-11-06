@@ -1,6 +1,8 @@
 #include "globaltool.h"
 #include "tdevchannel.h"
 
+#include <unistd.h> //FOR UNIT TEST usleep
+
 #define SS_TDEV_FILE "/dev/ttyACM0"
 #define SS_TDEV_BAUD B115200
 
@@ -16,18 +18,20 @@ int main(int argc, char ** argv)
     // UNIT TEST BED
     char buf_td[256] = {'\0', };
     int i, n;
-    if(rc = TdevChannel_init(&tdchan, SS_TDEV_FILE, SS_TDEV_BAUD))
+    rc = TdevChannel_init(&tdchan, SS_TDEV_FILE, SS_TDEV_BAUD);
+    if(rc < 0)
     {
         logInfo("Error on init tdev (%d)", rc);
         logInfo("Please check if you are on root previlege.");
         return 1;
     }
-    for(i=0; i<5; i++)
+    for(i=0; i<15; i++)
     {
         logInfo("Recv %d", i);
         n = TdevChannel_recv(&tdchan, buf_td, sizeof buf_td - 1);
-        logInfo("(%d) %s", n, buf_td);
-        usleep(1200);
+        logInfo("(%d) %.*s", n, n, buf_td);
+        
+        usleep(1200 * 100);
     }
     TdevChannel_finish(&tdchan);
     ////
