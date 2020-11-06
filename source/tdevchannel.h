@@ -44,10 +44,18 @@ int TdevChannel_init(TdevChannel * t, const char * filepath, unsigned int baudra
 /**
  * 
  * @param buf 읽을 데이터 들어가는 공간
- * @param nbytes 읽을 최대 바이트 수
- * @returns 읽은 데이터 바이트 수; 음수일 때 EOF
+ * @param nbytes 읽을 최대 바이트 길이
+ * @returns 읽은 데이터 바이트 길이; 에러 혹은 EOF일 시 음수
  */
 int TdevChannel_recv(TdevChannel * t, char * buf, int nbytes);
+
+/**
+ * 
+ * @param buf 쓸 데이터
+ * @param nbytes 쓸 데이터의 바이트 길이
+ * @returns 쓴 데이터 바이트 길이; 정상적으로 쓰지 못했을 시 음수
+ */
+int TdevChannel_send(TdevChannel * t, char * buf, int nbytes);
 
 /**
  * 

@@ -19,21 +19,45 @@ int main(int argc, char ** argv)
     char buf_td[256] = {'\0', };
     int i, n;
     rc = TdevChannel_init(&tdchan, SS_TDEV_FILE, SS_TDEV_BAUD);
-    if(rc < 0)
+    if(rc != 0)
     {
         logInfo("Error on init tdev (%d)", rc);
-        logInfo("Please check if you are on root previlege.");
+        logInfo("Please check if the target device is on-line or you have root previlege.");
         return 1;
     }
-    for(i=0; i<15; i++)
+    
+    for(i=0; i<7; i++)
     {
         logInfo("Recv %d", i);
         n = TdevChannel_recv(&tdchan, buf_td, sizeof buf_td - 1);
-        logInfo("(%d) %.*s", n, n, buf_td);
-        
-        usleep(1200 * 100);
+        if(n >= 0)
+            logInfo("(%d) %.*s", n, n, buf_td);
+        else { //negative
+            logInfo("(%d) ==Broken==", n);
+            break;
+        }   
+        usleep(1300 * 1000);
     }
-    TdevChannel_finish(&tdchan);
+    logInfo("TdevChannel_send");
+    char samplebuf_cl[256] = "";
+    int n_cl = 0;
+    n = TdevChannel_send(&tdchan, samplebuf_cl, n_cl);
+    logInfo("Writed = %d", n);
+    for(i=0; i<7; i++)
+    {
+        logInfo("Recv %d", i);
+        n = TdevChannel_recv(&tdchan, buf_td, sizeof buf_td - 1);
+        if(n >= 0)
+            logInfo("(%d) %.*s", n, n, buf_td);
+        else { //negative
+            logInfo("(%d) ==Broken==", n);
+            break;
+        }   
+        usleep(1300 * 1000);
+    }
+
+    rc = TdevChannel_finish(&tdchan);
+    logInfo("finish code of %d", rc);
     ////
 
     /*

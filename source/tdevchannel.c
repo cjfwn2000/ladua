@@ -1,4 +1,5 @@
 #include "tdevchannel.h"
+#include "globaltool.h"
 #include <fcntl.h>  //file control (e.g. O_RDWR)
 #include <unistd.h>  //Posix IO interfaces (e.g. read)
 #include <termios.h>  //Posix terminal control (e.g. struct termios)
@@ -51,9 +52,21 @@ int TdevChannel_init(TdevChannel * t, const char * filepath, unsigned int baudra
 int TdevChannel_recv(TdevChannel * t, char * buf, int nbytes)
 {
     int readed;
+    static char zerobuf[1] = "";
 
     readed = read(t->fd, buf, nbytes);
+    // 혹시 연결이 끊어졌는지 확인
+    if(readed==0 && write(t->fd, zerobuf, 0) < 0) 
+        return -1;
     return readed;
+}
+
+int TdevChannel_send(TdevChannel * t, char * buf, int nbytes)
+{
+    int writed;
+    
+    writed = write(t->fd, buf, nbytes);
+    return writed;
 }
 
 int TdevChannel_finish(TdevChannel * t)
