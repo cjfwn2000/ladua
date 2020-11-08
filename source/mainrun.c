@@ -1,70 +1,41 @@
 #include "globaltool.h"
-#include "tdevchannel.h"
-#include "clientchannel.h"
-
-#include <unistd.h> //FOR UNIT TEST usleep
-#include <libssh/server.h> //FOR UNIT TEST
 
 #define SS_TDEV_FILE "/dev/ttyACM0"
 #define SS_TDEV_BAUD B115200
 
-static int auth_password(const char *user, const char *password){
-    if(strcmp(user,"aris"))
-        return 0;
-    if(strcmp(password,"lala"))
-        return 0;
-    return 1; // authenticated
-} //FOR UNIT TEST
 
 int main(int argc, char ** argv)
 {
-    // 여기는 메인
+    // 여기는 메인쓰레드
     logInfo("%s : Starting...", argv[0]);
 
-    /*
-    // 지금부터는 accept하는 쓰레드
-    logInfo("Thread start: accepting");
-    logInfo("Thread end: accepting");
-    
-    // 지금부터는 클라이언트1과 대화하는 쓰레드
-    logInfo("Thread start: ClientChannel1");
-    char buf_td[256];  //buffer for TdevChannel_recv
-    int n_td; //return from TdevChannel_recv
-    char buf_cl[256];  //buffer for ClientChannel_recv
-    int n_cl; //return from ClientChannel_recv
+    // TODO 내부흐름 시나리오를 다시 설계해야할 듯 싶다.
+    // 이유? "각 연결당 쓰레드 위임 방식"은 너무 메모리에 부담이 가게 된다. 특히 메시지큐...
+    // 예정 쓰레드 목록: MainThread(여기), SshAcceptorThread, AuthCallbackThread(콜백용; 즉 잠시만 쓰임; 각 클라이언트들의 처음 단계)
+
+    쓰레드시작_SshAcceptorThread(Main의clientChannelList); //생존: MainThread가 종료하라 전까지 //의무: ssh listen and accept
+    // idea: clientChannelList는 MainThread와 AcceptorThread 둘 다 접근할 것이므로 이에 대한 mutex가 필요할 것
+
     while(1) {
-        // Polling: TDev
-        //TODO if(TdevMsgQ_len(tdmq) > 0) ...
-        //본래 TdevChannel은 '중앙측' 쓰레드만 다루는 것이지만 여기서는 임시로 직접 다룸
-        n_td = TdevChannel_recv(&tdchan, buf_td, sizeof buf_td);  //should be non-block
-        if(n_td > 0) { //sane
-            // tdev -> ss -> client
-            logInfo("TDev recv (%d bytes)", n_td);
-            ClientChannel_send(&clchan, buf_td, n_td);
-        } else if (n_td == 0) { //sane, 기기출력 아직 없음
-            //대기
-        } else { //n_td < 0; 기기 EOF
-            logInfo("[!] TDev channel broken.");
-            TdevChannel_sendStr(&clchan, "[!] Target device channel has been broken.");
+        //tdev->client
+        poll(tdev);
+        if("got_output"){
+            전달_clients에게(clientChannelList);
+        } else if("broken") {
             break;
         }
-
-        // Polling: ClientChannel
-        n_cl = ClientChannel_recv(&clchan, buf_cl, sizeof buf_cl);
-        if(n_cl > 0) { //sane
-            // tdev <- ss <- client
-            TdevChannel_send(&tdchan, buf_cl, n_cl);
-        } else if (n_cl == 0) { //sane, 클라이언트출력 아직 없음
-            //대기
-        } else { //n_cl < 0; 클라이언트 EOF
-            logInfo("[!] Client channel broken.");
-            break;
+        //client->tdev
+        for (clchan in clientChannelList) { //idea: 아무래도 clientChannelList는 Linked List로 만드는 게 좋겠다
+            poll(clchan);
+            if("got_output"){
+                전달_tdev에게();
+            } else if("broken") {
+                clchan_종료();  //ssh_disconnect어쩌구...
+            }
         }
     }
-    TdevChannel_close(); //TODO 이것도 중앙측 쓰레드가 해야...
-    ClientChannel_close();
-    logInfo("Thread end: ClientChannel1");
-    */
+    // Main program stops
+    종료_clients(clientChannelList);
 
     return 0;
 }
