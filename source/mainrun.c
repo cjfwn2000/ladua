@@ -1,23 +1,25 @@
 #include "globaltool.h"
 #include "tdevchannel.h"
+#include "clientchannel.h"
 
 #include <unistd.h> //FOR UNIT TEST usleep
+#include <libssh/server.h> //FOR UNIT TEST
 
 #define SS_TDEV_FILE "/dev/ttyACM0"
 #define SS_TDEV_BAUD B115200
 
+static int auth_password(const char *user, const char *password){
+    if(strcmp(user,"aris"))
+        return 0;
+    if(strcmp(password,"lala"))
+        return 0;
+    return 1; // authenticated
+} //FOR UNIT TEST
+
 int main(int argc, char ** argv)
 {
-    int rc;
-    TdevChannel tdchan;
-    //ClientChannel clchan;
-
     // 여기는 메인
-    logInfo("%s on line.", argv[0]);
-    
-    // UNIT TEST BED
-    
-    ////
+    logInfo("%s : Starting...", argv[0]);
 
     /*
     // 지금부터는 accept하는 쓰레드
