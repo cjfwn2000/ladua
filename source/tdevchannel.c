@@ -4,6 +4,13 @@
 #include <unistd.h>  //Posix IO interfaces (e.g. read)
 #include <termios.h>  //Posix terminal control (e.g. struct termios)
 
+struct _TdevChannel {
+    int fd;  //file descriptor to tdev
+    //char * filepath
+    //char * filepath
+    //int baudrate;
+};
+
 int TdevChannel_init(TdevChannel * t, const char * filepath, unsigned int baudrate)
 {
     int fd = open(filepath, O_RDWR | O_SYNC | O_NOCTTY);

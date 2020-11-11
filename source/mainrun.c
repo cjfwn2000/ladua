@@ -1,4 +1,5 @@
 #include "globaltool.h"
+#include "clientchannel.h"
 #include <libssh/server.h>
 #include <signal.h>
 #include <pthread.h>
@@ -27,13 +28,13 @@ static void sigintHandlerToStop(int signum) {
 /**
  * 클라이언트 접속을 담당하는 쓰레드 루틴
  * 기간: 메인 루틴이 가동중일 동안 항상
+ * @param payload 메인쓰레드에서 운용할 ClientChannelList를 가리킴
  */
-static void * trSshAcceptor(void * p_sshBind)
+static void * trSshAcceptor(void * payload)
 {
     #define LOGPREFIX "[trSshAcceptor] "
-    ssh_bind sshbind = (ssh_bind) p_sshBind;
-
-    ssh
+    ClientChannelList * cclp = (ClientChannelList *) payload;
+    
 }
 
 int main(int argc, char ** argv)

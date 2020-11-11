@@ -3,15 +3,14 @@
  * CNU Smartdatalab Lee cheolju
  */
 
-typedef struct _TdevChannel {
-    int fd;  //file descriptor to tdev
-    //char * filepath
-    //char * filepath
-    //int baudrate;
-} TdevChannel;
-
 /**
- * 유저가 baudrate를 제공할 수 있게 하기 위함
+ * 시리얼포트로 연결된 목표기기(Target Device)와 데이터를 주고받도록 하는 통로 역할을 합니다. 
+ * 기능 활용 전에 반드시 초기화(TdevChannel_init)되어야 합니다. 
+ */
+typedef struct _TdevChannel TdevChannel;
+
+/*
+ * 유저가 baudrate를 제공할 수 있게 하기 위합니다.
  */
 #ifndef _TERMIOS_H
 #define  B57600    0010001
@@ -34,10 +33,10 @@ typedef struct _TdevChannel {
 
 /**
  * 
- * 정상 실행시 t가 목표기기에 연결되어 다른 문제 없는 한 추후 여러 실행이 가능하게 됩니다.
+ * t가 목표기기에 연결되어 다른 문제 없는 한 추후 여러 실행이 가능하게 됩니다.
  * 
  * @param baudrate 목표기기의 전송 속도 (Baud rate); e.g. B115200
- * @returns 정상시 0, 에러시 Non-zero
+ * @returns 성공시 0, 에러시 Non-zero
  */
 int TdevChannel_init(TdevChannel * t, const char * filepath, unsigned int baudrate);
 
