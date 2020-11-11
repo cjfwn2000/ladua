@@ -4,11 +4,3 @@
 
 //로깅(혹은 디버깅메시지)에 쓰임
 void logInfo(const char *fmt, ... );
-
-
-// 문자열데이터의 전달을 위한 Circular Decaying Queue
-#define SCDQBUF_SIZE 256
-typedef struct _StrdataCDQueue {
-    char buf[SCDQBUF_SIZE];
-    
-} StrdataCDQueue;
