@@ -32,15 +32,22 @@ static void sigintHandlerToStop(int signum) {
  */
 static void * trSshAcceptor(void * payload)
 {
+    // Stop시: bind 정리
+    // TODO ssh_bind_accept에서 여전히 blocking상태일텐데 Stop검사는 언제하나?
+    // 해법?) 자식 쓰레드를 더 두자: mainStopFlag를 감시(polling)하여, 걸릴 때 부모의 bind를 free한다.
+    // 추가정보) ssh_bind_free는 bind 내 소켓파일을 close하는 효과가 있다.
+    // https://github.com/substack/libssh/blob/master/src/bind.c
+
     #define LOGPREFIX "[trSshAcceptor] "
     ClientChannelList * cclp = (ClientChannelList *) payload;
     
+    logInfo(LOGPREFIX "trSshAcceptor Started.");
 }
 
 int main(int argc, char ** argv)
 {   
     pthread_t tidSshAcceptor;
-    // TODO clientChannelList : 메인루틴이 다룰 물건, acceptor로부터 element 공급받는 물건
+    ClientChannelList cclist;
 
     // 여기는 메인쓰레드
     logInfo("%s : Starting...", argv[0]);
