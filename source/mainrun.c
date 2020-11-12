@@ -26,9 +26,10 @@ static void sigintHandlerToStop(int signum) {
 // tr = Thread Routine
 
 /**
- * 클라이언트 접속을 담당하는 쓰레드 루틴
+ * 클라이언트 SSH접속 등록을 담당하는 쓰레드 루틴
  * 기간: 메인 루틴이 가동중일 동안 항상
- * @param payload 메인쓰레드에서 운용할 ClientChannelList를 가리킴
+ * @param payload 메인쓰레드에서 운용하는 ClientChannelList를 가리킴,
+ *  여기에 접속 완료된 ClientChannel을 등록(add). 
  */
 static void * trSshAcceptor(void * payload)
 {
