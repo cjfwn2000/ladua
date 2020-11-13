@@ -7,7 +7,7 @@ SRC := $(wildcard $(SRC_DIR)/*.c)
 OBJ := $(SRC:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
 CFLAGS := -Wall
-LDLIBS := -lssh
+LDLIBS := -lssh -lpthread
 
 .PHONY: all clean
 

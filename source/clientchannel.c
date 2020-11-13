@@ -7,10 +7,6 @@ void CCList_init(ClientChannelList * l) {
     l->head = NULL;
 }
 
-ClientChannel * CCList_addNewFromSSH(ClientChannelList * l, ssh_session sessOpened) {
-    ClientChannel * 
-}
-
 // TODO: CCList_delete
 // 1. [prev] -> [ccDel] -> [next] (선형탐색)
 // 2. [prev] -> [next] / free [ccDel]

@@ -61,7 +61,7 @@ int TdevChannel_recv(TdevChannel * t, char * buf, int nbytes)
     return readed;
 }
 
-int TdevChannel_send(TdevChannel * t, char * buf, int nbytes)
+int TdevChannel_send(TdevChannel * t, const char * buf, int nbytes)
 {
     int writed;
     

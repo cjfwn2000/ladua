@@ -22,16 +22,17 @@ typedef struct _ClientChannel {
     ClientType type; //SSH or TELNET
     ssh_session sshSess;  //ssh접속일 때만
     ssh_channel ssdChan;  //ssh접속일 때만
-    ClientChannel * next;  //다음노드
+    struct _ClientChannel * next;  //다음노드
 } ClientChannel;
 
 /**
  * ClientChannel 객체를 초기화합니다. (SSH) 
- * @param sessOpened SSH 세션 객체를 가리키지만 클라이언트와 채널이 열려있는 상태여야 합니다. 
- * 예컨데 ssh_channel_read(chan,buf,...)가 가능한 상태여야 합니다.
+ * @param sessOpened SSH 세션 객체를 가리키지만 해당 클라이언트가 셸에 접속된 상태여야 합니다. 
+ * @param chan sessOpened에서 파생된 ssh_channel 객체여야 합니다. 데이터 송수신을 위해 필요합니다.
  */
-int ClientChannel_initFromSsh(ClientChannel * c, ssh_session sessOpened);
-ClientChannel * ClientChannel_next(ClientChannel * c);
+int ClientChannel_initFromSsh(ClientChannel * c, ssh_session sessOpened, ssh_channel chan);
+int ClientChannel_recv(ClientChannel * c, char * buf, int nbytes);
+int ClientChannel_send(ClientChannel * c, const char * buf, int nbytes);
 void ClientChannel_close(ClientChannel * c);
 
 /**
@@ -47,17 +48,18 @@ typedef struct _ClientChannelList {
 void CCList_init(ClientChannelList * l);
 /**
  * 신규 ClientChannel(SSH접속)을 만들어 리스트에 추가합니다. 
- * @param sessOpened SSH 세션 객체를 가리키지만 클라이언트와 채널이 열려있는 상태여야 합니다.
+ * @param sessOpened SSH 세션 객체를 가리키지만 해당 클라이언트가 셸에 접속된 상태여야 합니다. 
+ * @param chan sessOpened에서 파생된 ssh_channel 객체여야 합니다. 데이터 송수신을 위해 필요합니다.
  * @returns 그 추가된 객체로의 포인터
  */
-ClientChannel * CCList_addNewFromSSH(ClientChannelList * l, ssh_session sessOpened);
+ClientChannel * CCList_addNewFromSSH(ClientChannelList * l, ssh_session sessOpened, ssh_channel chan);
 /**
  * 일괄처리입니다. 각 ClientChannel마다
  * - 받을 데이터가 있으면 그것을 인자로 삼는 fnRecvData을 호출합니다.
  * - 연결이 끊어져있다면 종료하고 제거합니다.
  * @param fnRecvData 각 클라이언트로부터 받은 데이터 처리 function (받은데이터, 그 길이)
  */
-void CCList_batchRecv(ClientChannelList * l, void (*fnRecvData)(const char *, int *));
+void CCList_batchRecv(ClientChannelList * l, void (*fnRecvData)(const char *, int));
 /**
  * 일괄처리입니다. 각 ClientChannel에게 특정 데이터를 보냅니다.
  * @param sendBuf 각 클라이언트에게 보낼 데이터 버퍼 위치

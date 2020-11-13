@@ -59,7 +59,7 @@ int TdevChannel_recv(TdevChannel * t, char * buf, int nbytes);
  * @param nbytes 쓸 데이터의 바이트 길이
  * @returns 쓴 데이터 바이트 길이; 정상적으로 쓰지 못했을 시 음수
  */
-int TdevChannel_send(TdevChannel * t, char * buf, int nbytes);
+int TdevChannel_send(TdevChannel * t, const char * buf, int nbytes);
 
 /**
  * 
