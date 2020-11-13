@@ -166,7 +166,7 @@ static void * trSshAcceptor(void * payload)
             }
         } while(message && !chanNewb);
         if(!chanNewb) {
-            logInfo("Error: Client did not ask for a channel session (%s)", ssh_get_error(sessionNewb));
+            logInfo(LOGPREFIX "Error: Client did not ask for a channel session (%s)", ssh_get_error(sessionNewb));
             ssh_disconnect(sessionNewb);
             ssh_free(sessionNewb);
             continue;
@@ -190,17 +190,24 @@ static void * trSshAcceptor(void * payload)
             }
         } while(!shellRequested);
         if(!shellRequested) {
-            logInfo("Error: No shell requested (%s)", ssh_get_error(sessionNewb));
+            logInfo(LOGPREFIX "Error: No shell requested (%s)", ssh_get_error(sessionNewb));
             ssh_channel_free(chanNewb);
             ssh_disconnect(sessionNewb);
             ssh_free(sessionNewb);
             continue;
         }
 
-        logInfo("Success: Shell-opened session");
+        logInfo(LOGPREFIX "Success: Shell-opened session");
         // 클라이언트 리스트에 추가한다.
         sem_wait(&mutex_cclist);
-        CCList_addNewFromSSH(&cclist, sessionNewb, chanNewb);
+        if(!mainStopFlag)
+            CCList_addNewFromSSH(&cclist, sessionNewb, chanNewb);
+        else {
+            logInfo(LOGPREFIX "Because of mainStopFlag, discarding the very last client session.");
+            ssh_channel_free(chanNewb);
+            ssh_disconnect(sessionNewb);
+            ssh_free(sessionNewb);
+        }
         sem_post(&mutex_cclist);
     }
 
