@@ -4,12 +4,11 @@
 //// ClientChannelList
 
 void CCList_init(ClientChannelList * l) {
-    // TODO Dummy를 헤드에 넣는 방법론 이용.
-    l->head = dummy;
-    l->tail = dummy;
+    l->head = NULL;
 }
 
-ClientChannel * CCList_addNewFromSSH(ClientChannelList * l) {
+ClientChannel * CCList_addNewFromSSH(ClientChannelList * l, ssh_session sessOpened) {
+    //TODO thread-safe, mutex
     ClientChannel * 
 }
 

@@ -7,7 +7,12 @@
  * 시리얼포트로 연결된 목표기기(Target Device)와 데이터를 주고받도록 하는 통로 역할을 합니다. 
  * 기능 활용 전에 반드시 초기화(TdevChannel_init)되어야 합니다. 
  */
-typedef struct _TdevChannel TdevChannel;
+typedef struct _TdevChannel {
+    int fd;  //file descriptor to tdev
+    //char * filepath
+    //char * filepath
+    //int baudrate;
+} TdevChannel;
 
 /*
  * 유저가 baudrate를 제공할 수 있게 하기 위합니다.

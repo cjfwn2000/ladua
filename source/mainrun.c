@@ -1,13 +1,15 @@
 #include "globaltool.h"
 #include "clientchannel.h"
+#include "tdevchannel.h"
 #include <libssh/server.h>
 #include <signal.h>
 #include <pthread.h>
 
-// TODO 데이터가 하드코딩 상태; 외부파일에서 설정읽기로 만들자
+// TODO 데이터가 하드코딩 상태;
 #define TDEV_FILE "/dev/ttyACM0"
 #define TDEV_BAUD B115200
 #define SSH_PORT 10001
+#define RECVBUF_SIZE 256
 
 /**
  * Global Variable - 메인 루틴이 종료해야 하는지 알려줌
@@ -47,28 +49,50 @@ static void * trSshAcceptor(void * payload)
 
 int main(int argc, char ** argv)
 {   
-    pthread_t tidSshAcceptor;
+    // Channels
+    TdevChannel tdchan;
     ClientChannelList cclist;
+    int recvBytes = 0;  //TdevChannel_recv
+    char recvBuf[RECVBUF_SIZE] = {'\0'};  //TdevChannel_recv
+    // A thread
+    pthread_t tidSshAcceptor;
 
     // 여기는 메인쓰레드
     logInfo("%s : Starting...", argv[0]);
 
+    // 초기화 스테이지
     if(pthread_create(&tidSshAcceptor, NULL, trSshAcceptor, NULL)) {
-        logInfo("Failed in pthread.");
+        logInfo("Failed in pthread_create tidSshAcceptor.");
         return 1;
     }
-    
+    TdevChannel_init(&tdchan, TDEV_FILE, TDEV_BAUD);
+    CCList_init(&cclist);
     // 프로그램 중단 명령 핸들링
     signal(SIGINT, sigintHandlerToStop);
 
     // 메인 루틴 돌입
+    while(!mainStopFlag) {
+        // tdev->clients
+        recvBytes = TdevChannel_recv(&tdchan, recvBuf, sizeof recvBuf);
+        if (recvBytes > 0) { //보낼 데이터 있음
+            CCList_batchSend(&cclist, recvBuf, recvBytes);
+        } else if (recvBytes < 0) { //Error or EOF
+            logInfo("[TdevChannel] Broken pipe. mainStopFlag");
+            mainStopFlag = 1;
+        }
+        // clients->tdev
+        CCList_batchRecv(&cclist, sendToTdev);
+    }
+    // Main program stops
+    // TODO
+    
 
     /*
     쓰레드시작_SshAcceptorThread(Main의clientChannelList); //생존: MainThread가 종료하라 전까지 //의무: ssh listen and accept
     // idea: clientChannelList는 MainThread와 AcceptorThread 둘 다 접근할 것이므로 이에 대한 mutex가 필요할 것
 
     // 메인 루틴 돌입
-    while(1) {
+    while(!mainStopFlag) {
         //tdev->clients
         poll(tdev);
         if("got_output"){
@@ -87,6 +111,7 @@ int main(int argc, char ** argv)
         }
     }
     // Main program stops
+    join_thread(acceptor);
     종료_clients(clientChannelList);
     */
 
