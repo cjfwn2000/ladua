@@ -4,7 +4,6 @@
  */
 
 #include <libssh/server.h>
-#include <semaphore.h>
 
 typedef enum _ClientType {
     SSH,
@@ -40,7 +39,6 @@ void ClientChannel_close(ClientChannel * c);
  */
 typedef struct _ClientChannelList {
     ClientChannel * head; //처음노드, 초기에 NULL
-    sem_t mutex;  //for thread-safe
 } ClientChannelList;
 
 /**
