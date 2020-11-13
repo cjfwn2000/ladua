@@ -21,7 +21,7 @@ typedef enum _ClientType {
 typedef struct _ClientChannel {
     ClientType type; //SSH or TELNET
     ssh_session sshSess;  //ssh접속일 때만
-    ssh_channel ssdChan;  //ssh접속일 때만
+    ssh_channel sshChan;  //ssh접속일 때만
     struct _ClientChannel * next;  //다음노드
 } ClientChannel;
 
@@ -54,7 +54,7 @@ void CCList_init(ClientChannelList * l);
  */
 ClientChannel * CCList_addNewFromSSH(ClientChannelList * l, ssh_session sessOpened, ssh_channel chan);
 /**
- * 일괄처리입니다. 각 ClientChannel마다
+ * 일괄처리입니다. 각 ClientChannel마다: 
  * - 받을 데이터가 있으면 그것을 인자로 삼는 fnRecvData을 호출합니다.
  * - 연결이 끊어져있다면 종료하고 제거합니다.
  * @param fnRecvData 각 클라이언트로부터 받은 데이터 처리 function (받은데이터, 그 길이)
