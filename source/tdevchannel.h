@@ -65,4 +65,4 @@ int TdevChannel_send(TdevChannel * t, char * buf, int nbytes);
  * 
  * @returns 성공시 0; 실패시 Non-zero
  */
-int TdevChannel_finish(TdevChannel * t);
+int TdevChannel_finalize(TdevChannel * t);

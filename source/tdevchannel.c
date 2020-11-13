@@ -69,7 +69,7 @@ int TdevChannel_send(TdevChannel * t, char * buf, int nbytes)
     return writed;
 }
 
-int TdevChannel_finish(TdevChannel * t)
+int TdevChannel_finalize(TdevChannel * t)
 {
     return close(t->fd);
 }
