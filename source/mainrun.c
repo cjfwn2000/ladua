@@ -99,8 +99,14 @@ static void * trSshAcceptor(void * payload)
         sessionNewb = ssh_new();
         rc = ssh_bind_accept(sshBind, sessionNewb);
         if(rc == SSH_ERROR) {
-            logInfo(LOGPREFIX "No more ssh_bind_accept");
-            break;
+            if(mainStopFlag) { //메인 중단 명령이 있었기에 accept 중단
+                logInfo(LOGPREFIX "Got mainStopFlag, Stopping acception.");
+                break;
+            } else { //별개의 문제로 SSH 에러 발생
+                logInfo(LOGPREFIX "Error accepting a connection: %s", ssh_get_error(sshBind));
+                ssh_free(sessionNewb);
+                continue;
+            }
         }
 
         logInfo(LOGPREFIX "New client connected. checking...");
@@ -247,24 +253,33 @@ int main(int argc, char ** argv)
         // tdev->clients
         recvBytes = TdevChannel_recv(&tdchan, recvBuf, sizeof recvBuf);
         if (recvBytes > 0) { //보낼 데이터 있음
+            sem_wait(&mutex_cclist);
             CCList_batchSend(&cclist, recvBuf, recvBytes);
+            sem_post(&mutex_cclist);
         } else if (recvBytes < 0) { //Error or EOF
             logInfo("[TdevChannel] Disconnected. mainStopFlag");
             mainStopFlag = 1;
             break;
         }
         // clients->tdev
+        sem_wait(&mutex_cclist);
         CCList_batchRecv(&cclist, sendEachToTdev);
+        sem_post(&mutex_cclist);
     }
     // Main program stops
+
     logInfo("Stopping the device...");
     TdevChannel_finalize(&tdchan);
+    
+    logInfo("Closing all the client channels...");
+    sem_wait(&mutex_cclist);
+    CCList_finalize(&cclist);
+    sem_post(&mutex_cclist);
+
     logInfo("Stopping client-acception routine...");
     finalizeSshAcception();
     pthread_join(tidSshAcceptor, NULL); 
     //pthread_join(tidTelnetAcceptor, NULL);
-    logInfo("Closing all the client channels...");
-    CCList_finalize(&cclist);
 
     logInfo("Finished.");
     return 0;
