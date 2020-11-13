@@ -79,8 +79,6 @@ static void finalizeSshAcception() {
  */
 static void * trSshAcceptor(void * payload)
 {
-    // Stop시: bind에서 손뗀다
-    // TODO ssh_bind_accept에서 여전히 blocking상태일텐데 Stop검사는 언제하나?
     // 추가정보) ssh_bind_free는 bind 내 소켓파일을 close하는 효과가 있다.
     // 이때 ssh_bind_accept는 return SSH_ERROR를 한다.
     // https://github.com/substack/libssh/blob/master/src/bind.c
