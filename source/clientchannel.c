@@ -25,8 +25,8 @@ void CCList_init(ClientChannelList * l)
 
 ClientChannel * CCList_addNewFromSSH(ClientChannelList * l, ssh_session sessOpened, ssh_channel chan)
 {
-    // 선형탐색으로 빈자리 찾기
     ClientChannel * current = NULL;
+    // 선형탐색으로 빈자리 찾기
     if(l->head == NULL) {
         l->head = _createNode();
         current = l->head;
@@ -42,6 +42,8 @@ ClientChannel * CCList_addNewFromSSH(ClientChannelList * l, ssh_session sessOpen
     current->sshSess = sessOpened;
     current->sshChan = chan;
     current->next = NULL;
+
+    return current;
 }
 
 void CCList_batchRecv(ClientChannelList * l, void (*fnRecvData)(const char *, int))
@@ -51,8 +53,6 @@ void CCList_batchRecv(ClientChannelList * l, void (*fnRecvData)(const char *, in
     ClientChannel * current;
     ClientChannel * previous;  //For deleting operation
 
-    if(l->head == NULL)  //empty
-        return;
     //for(; current != NULL; current = current->next) {
     current = l->head;
     previous = NULL;
@@ -75,7 +75,28 @@ void CCList_batchRecv(ClientChannelList * l, void (*fnRecvData)(const char *, in
     }
 }
 
-void CCList_batchSend(ClientChannelList * l, const char * sendBuf, int sendNBytes);
+void CCList_batchSend(ClientChannelList * l, const char * sendBuf, int sendNBytes)
+{
+    ClientChannel * current;
 
+    current = l->head;
+    while(current != NULL) {
+        ClientChannel_send(current, sendBuf, sendNBytes);
+        current = current->next;
+    }
+}
 
-void CCList_finalize(ClientChannelList * l);
+void CCList_finalize(ClientChannelList * l)
+{
+    ClientChannel * current;
+    ClientChannel * next;
+    
+    current = l->head;
+    while(current != NULL) {
+        next = current->next;
+        ClientChannel_close(current);
+        free(current);
+        current = next;
+    }
+    l->head = NULL;
+}
