@@ -1,12 +1,77 @@
 #include "clientchannel.h"
 #include "globaltool.h"
 #include <stdlib.h>
+#include <libssh/server.h>
 
 #define RECVBUF_SIZE 256
 
+//// ClientChannel
+
+int ClientChannel_initFromSsh(ClientChannel * c, ssh_session sessOpened, ssh_channel chan)
+{
+    c->type = SSH;
+    c->sshSess = sessOpened;
+    c->sshChan = chan;
+
+    c->next = NULL;
+    return 0;
+}
+
+int ClientChannel_recv(ClientChannel * c, char * buf, int nbytes)
+{
+    int readed;
+
+    switch (c->type)
+    {
+    case SSH:
+        readed = ssh_channel_read_nonblocking(c->sshChan, buf, nbytes, 0);
+        // 혹시 연결이 끊어졌는지 확인
+        if(readed == 0 && ssh_channel_is_eof(c->sshChan))
+            return -1;
+        return readed;
+        break;
+        
+    //case TELNET:
+    default:
+        logInfo("[ClientChannel] Warning: Unexpected type for recv.");
+        return -1;
+        break;
+    }
+}
+
+int ClientChannel_send(ClientChannel * c, const char * buf, int nbytes)
+{
+    int writed;
+
+    switch (c->type)
+    {
+    case SSH:
+        writed = ssh_channel_write(c->sshChan, buf, nbytes);
+        return writed;
+        break;
+        
+    //case TELNET:
+    default:
+        logInfo("[ClientChannel] Warning: Unexpected type for send.");
+        return -1;
+        break;
+    }
+}
+
+void ClientChannel_close(ClientChannel * c)
+{
+    if(ssh_channel_is_open(c->sshChan)) {
+        ssh_channel_send_eof(c->sshChan);
+        ssh_channel_close(c->sshChan);
+    }
+    ssh_channel_free(c->sshChan);
+    ssh_disconnect(c->sshSess);
+}
+
+
 //// ClientChannelList
 
-/** 비어있는 객체 생성; Caller가 구조체 내 데이터 채우기 필요 */
+/** 비어있는 객체 생성; Caller가 따로 init필요 */
 static ClientChannel * _createNode()
 {
     ClientChannel * newNode = malloc(sizeof(ClientChannel));
@@ -38,9 +103,7 @@ ClientChannel * CCList_addNewFromSSH(ClientChannelList * l, ssh_session sessOpen
         current->next = _createNode();
         current = current->next;
     }
-    current->type = SSH;
-    current->sshSess = sessOpened;
-    current->sshChan = chan;
+    ClientChannel_initFromSsh(current, sessOpened, chan);
     current->next = NULL;
 
     return current;

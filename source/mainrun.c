@@ -46,7 +46,7 @@ static int isAccountValid(const char * user, const char * pass) {
 }
 
 /**
- * sshBind를 세팅하여 SSH서버로서 ssh_bind_accept()가 가능하도록 함
+ * sshBind를 세팅하여 SSH서버로서 ssh_bind_accept가 가능하도록 함
  * @returns 성공시 0, 실패시 음수
  */
 static int makeSshAcceptable() {
@@ -65,24 +65,32 @@ static int makeSshAcceptable() {
 }
 
 /**
- * 더 이상 sshBind 필요없을 때; ssh_bind_accept block되어 있다면 그게 해제된다.
+ * 더 이상 sshBind 필요없을 때
  */
 static void finalizeSshAcception() {
     ssh_bind_free(sshBind);
 }
 
+
+/**
+ * trSshAcceptor가 cancel되었을 때 메모리를 청소하기 위한 function.
+ * @param payload sessionNewb (청소대상)
+ */
+static void trSshAcceptor_cleanup(void * payload)
+{
+    ssh_session sessionNewb = (ssh_session) payload;
+    ssh_free(sessionNewb);
+    logInfo("[trSshAcceptor_cleanup]");
+}
+
 /**
  * 클라이언트 SSH접속 등록(cclist)을 담당하는 쓰레드 루틴. 
- * sshBind 사용. 
+ * makeSshAcceptable이 사전에 실행되어야 함. 
  * 기간: 메인 루틴이 가동중일 동안 항상
  * @param payload 미사용
  */
 static void * trSshAcceptor(void * payload)
 {
-    // 추가정보) ssh_bind_free는 bind 내 소켓파일을 close하는 효과가 있다.
-    // 이때 ssh_bind_accept는 return SSH_ERROR를 한다.
-    // https://github.com/substack/libssh/blob/master/src/bind.c
-
     #define LOGPREFIX "[trSshAcceptor] "
     int rc = 0;
     ssh_session sessionNewb = 0;  //매 턴마다 새로 배당됨
@@ -91,21 +99,20 @@ static void * trSshAcceptor(void * payload)
     int authenticated = 0;
     int shellRequested = 0;
 
-    // 선조건: ssh_bind_accept(sshBind)가 사용 가능하다
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+
     logInfo(LOGPREFIX "Starting client-acception.");
     while(1) {
         sessionNewb = ssh_new();
+        pthread_cleanup_push(trSshAcceptor_cleanup, (void*)sessionNewb);
+        //여기서 pthread_cleanup_pop 사이에 thread cancel이 들어와도 sessionNewb을 정리할 수 있게 한다.
         rc = ssh_bind_accept(sshBind, sessionNewb);
         if(rc == SSH_ERROR) {
-            if(mainStopFlag) { //메인 중단 명령이 있었기에 accept 중단
-                logInfo(LOGPREFIX "Got mainStopFlag, Stopping acception.");
-                break;
-            } else { //별개의 문제로 SSH 에러 발생
-                logInfo(LOGPREFIX "Error accepting a connection: %s", ssh_get_error(sshBind));
-                ssh_free(sessionNewb);
-                continue;
-            }
+            logInfo(LOGPREFIX "Error accepting a connection: %s", ssh_get_error(sshBind));
+            ssh_free(sessionNewb);
+            continue;
         }
+        pthread_cleanup_pop(0);
 
         logInfo(LOGPREFIX "New client connected. checking...");
         // 1. Key exchange
@@ -122,7 +129,7 @@ static void * trSshAcceptor(void * payload)
             if(!message)
                 break;
             switch(ssh_message_type(message)) {
-            case SSH_REQUEST_CHANNEL:
+            case SSH_REQUEST_AUTH:
                 switch(ssh_message_subtype(message)){
                 case SSH_AUTH_METHOD_PASSWORD:
                     logInfo(LOGPREFIX "User %s tries to auth.", ssh_message_auth_user(message));
@@ -212,13 +219,13 @@ static void * trSshAcceptor(void * payload)
     }
 
     logInfo(LOGPREFIX "Finished.");
-    return NULL;
 }
 
 /**
  * CCList_batchRecv에 쓰일 function
  */
-static void sendEachToTdev(const char * recvBuf, int nbytes) {
+static void sendEachToTdev(const char * recvBuf, int nbytes)
+{
     // recvBuf[0..nbytes-1]
     TdevChannel_send(&tdchan, recvBuf, nbytes);
 }
@@ -283,6 +290,7 @@ int main(int argc, char ** argv)
 
     logInfo("Stopping client-acception routine...");
     finalizeSshAcception();
+    pthread_cancel(tidSshAcceptor); //accept에 블럭돼있으면 빠져나오게 해준다.
     pthread_join(tidSshAcceptor, NULL); 
     //pthread_join(tidTelnetAcceptor, NULL);
 
