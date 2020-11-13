@@ -8,7 +8,6 @@ void CCList_init(ClientChannelList * l) {
 }
 
 ClientChannel * CCList_addNewFromSSH(ClientChannelList * l, ssh_session sessOpened) {
-    //TODO thread-safe, mutex
     ClientChannel * 
 }
 

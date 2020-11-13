@@ -6,6 +6,11 @@
 #include <libssh/server.h>
 #include <semaphore.h>
 
+typedef enum _ClientType {
+    SSH,
+    TELNET,
+} ClientType;
+
 /**
  * 원격 셸 따위로 접속한 클라이언트와에 데이터를 주고받도록 하는 통로 역할을 합니다. 
  * 문자열 데이터를 받거나 보내거나 접속 종료하는 기능을 활용하는 데 쓰입니다. 
@@ -15,6 +20,7 @@
  * CCList_addNewSSH 등등으로도 만들어질 수 있습니다.
  */
 typedef struct _ClientChannel {
+    ClientType type; //SSH or TELNET
     ssh_session sshSess;  //ssh접속일 때만
     ssh_channel ssdChan;  //ssh접속일 때만
     ClientChannel * next;  //다음노드
@@ -31,7 +37,6 @@ void ClientChannel_close(ClientChannel * c);
 
 /**
  * ClientChannel 관련 기능을 일괄처리하도록 도와주는 연결리스트(Linked List)입니다.
- * 다중 쓰레드에서 처리할 때를 대비하여 Thread-safe합니다. 
  */
 typedef struct _ClientChannelList {
     ClientChannel * head; //처음노드, 초기에 NULL
