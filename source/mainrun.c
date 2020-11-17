@@ -250,7 +250,9 @@ int main(int argc, char ** argv)
     logInfo("Initializing the target device channel...");
     if(TdevChannel_init(&tdchan, TDEV_FILE, TDEV_BAUD) < 0) {
         logInfo("Failed in initializing the target device channel.");
-        logInfo("Please check if you don't have enough permission.");
+        logInfo("Please check if the device isn't connected");
+        logInfo("or you don't have enough permission.");
+        return 1;
     }
     CCList_init(&cclist);
     sem_init(&mutex_cclist, 0, 1);
