@@ -227,6 +227,8 @@ static void * trSshAcceptor(void * payload)
 static void sendEachToTdev(const char * recvBuf, int nbytes)
 {
     // recvBuf[0..nbytes-1]
+    logInfo("< A client sends...");
+    logDump('<', recvBuf, nbytes);
     TdevChannel_send(&tdchan, recvBuf, nbytes);
 }
 
@@ -265,6 +267,7 @@ int main(int argc, char ** argv)
         // tdev->clients
         recvBytes = TdevChannel_recv(&tdchan, recvBuf, sizeof recvBuf);
         if (recvBytes > 0) { //보낼 데이터 있음
+            logDump('>', recvBuf, recvBytes);
             sem_wait(&mutex_cclist);
             CCList_batchSend(&cclist, recvBuf, recvBytes);
             sem_post(&mutex_cclist);

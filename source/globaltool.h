@@ -4,3 +4,4 @@
 
 //로깅(혹은 디버깅메시지)에 쓰임
 void logInfo(const char *fmt, ... );
+void logDump(char prefix, const char *buffer, int length);
