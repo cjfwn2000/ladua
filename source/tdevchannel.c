@@ -1,8 +1,8 @@
 #include "tdevchannel.h"
 #include "globaltool.h"
 #include <fcntl.h>  //file control (e.g. O_RDWR)
-#include <unistd.h>  //Posix IO interfaces (e.g. read)
 #include <termios.h>  //Posix terminal control (e.g. struct termios)
+#include <unistd.h>  //Posix IO interfaces (e.g. read)
 
 int TdevChannel_init(TdevChannel * t, const char * filepath, unsigned int baudrate)
 {
@@ -14,6 +14,10 @@ int TdevChannel_init(TdevChannel * t, const char * filepath, unsigned int baudra
     struct termios opts;
     if(tcgetattr(fd, &opts) != 0)
         return -2;
+
+    // 2020.11.17. 추가사항: 매끄러운 개행 출력을 위함
+    // CR NL (0d 0a)가 제대로 나오지 않는 문제를 해결
+    cfmakeraw(&opts);
 
     // Baud rate
     cfsetispeed(&opts, baudrate);
@@ -34,6 +38,7 @@ int TdevChannel_init(TdevChannel * t, const char * filepath, unsigned int baudra
 
     opts.c_cflag |= (CLOCAL | CREAD); // ignore modem controls,
                                       // enable reading
+    
     // No parity (8N1)
     opts.c_cflag &= ~PARENB;
     opts.c_cflag &= ~CSTOPB;
