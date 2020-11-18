@@ -103,7 +103,7 @@ static void * trSshAcceptor(void * payload)
 
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 
-    logInfo(LOGPREFIX "Starting client-acception.");
+    logInfo(LOGPREFIX "Starting SSH client-acception.");
     while(1) {
         sessionNewb = ssh_new();
         pthread_cleanup_push(trSshAcceptor_cleanup, (void*)sessionNewb);
