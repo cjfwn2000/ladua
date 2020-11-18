@@ -6,15 +6,17 @@
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <unistd.h>  //getopt
+#include <stdlib.h> //atoi
 
 // TODO 데이터가 하드코딩 상태;
-#define TDEV_FILE "/dev/ttyACM0"
-#define TDEV_BAUD B115200
-#define SSH_PORT 10001
+#define DEFAULT_TDEV_FILE "/dev/ttyACM0"
+#define DEFAULT_TDEV_BAUD B115200
+#define DEFAULT_SSH_PORT 10001
 #define SSH_PATH_DSAKEY "/etc/ssh/ssh_host_dsa_key"
 #define SSH_PATH_RSAKEY "/etc/ssh/ssh_host_rsa_key"
 #define RECVBUF_SIZE 256
-
+#define DEFAULT_TELNET_PORT 10002
 #define ACCOUNT_USER "mobidigm"
 #define ACCOUNT_PASS "dj2020"
 
@@ -49,8 +51,8 @@ static int isAccountValid(const char * user, const char * pass) {
  * sshBind를 세팅하여 SSH서버로서 ssh_bind_accept가 가능하도록 함
  * @returns 성공시 0, 실패시 음수
  */
-static int makeSshAcceptable() {
-    const unsigned int bindport = SSH_PORT;
+static int makeSshAcceptable(unsigned int bindport) {
+    //const unsigned int bindport = SSH_PORT;
 
     sshBind = ssh_bind_new();
     ssh_bind_options_set(sshBind, SSH_BIND_OPTIONS_DSAKEY, SSH_PATH_DSAKEY);
@@ -236,19 +238,43 @@ int main(int argc, char ** argv)
 {   
     int recvBytes = 0;  //TdevChannel_recv
     char recvBuf[RECVBUF_SIZE] = {'\0'};  //TdevChannel_recv
-    // A thread
+    // threads
     pthread_t tidSshAcceptor;
+    // 초기화 설정값; 사용자로부터 가져올 수도 있음.
+    char tdevFile[128] = DEFAULT_TDEV_FILE;
+    unsigned int tdevBaud = DEFAULT_TDEV_BAUD;
+    unsigned int bindportSsh = DEFAULT_SSH_PORT;
+    unsigned int bindportTelnet = DEFAULT_TELNET_PORT;
 
-    logInfo("%s : Starting...", argv[0]);
+    // 사용자로부터 설정값 가져오기
+    // Usage: serialserver -f /dev/ttyACM0 -b 115200 -s 10001 -t 10002
+    int opt;
+    while( (opt=getopt(argc, argv, "f:b:s:t:")) != -1 ) {
+        switch(opt) {
+        case 'f': //File path dev
+            strncpy(tdevFile, optarg, sizeof tdevFile - 1);
+            break;
+        case 'b': //Baud rate
+            logInfo("Argument '-b' : Sorry, not implemented.");
+            break;
+        case 's': //port SSH
+            bindportSsh = atoi(optarg);
+            break;
+        case 't': //port Telnet
+            bindportTelnet = atoi(optarg);
+            break;
+        }
+    }
 
     // 초기화 단계
-    if(makeSshAcceptable() < 0) {
+    logInfo("Initializing the SSH server...", argv[0]);
+    if(makeSshAcceptable(bindportSsh) < 0) {
         logInfo("Failed in making SSH server acceptable.");
         logInfo("Please check if you don't have enough permission.");
         return 1;
     }
     logInfo("Initializing the target device channel...");
-    if(TdevChannel_init(&tdchan, TDEV_FILE, TDEV_BAUD) < 0) {
+    if(TdevChannel_init(&tdchan, tdevFile, tdevBaud) < 0) {
         logInfo("Failed in initializing the target device channel.");
         logInfo("Please check if the device isn't connected");
         logInfo("or you don't have enough permission.");
