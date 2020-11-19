@@ -32,6 +32,16 @@ int ClientChannel_recv(ClientChannel * c, char * buf, int nbytes)
         break;
         
     //case TELNET:
+    /* TODO 
+    소켓에서 raw하게 데이터를 recv한다.
+    telnet_recv : 정해진 핸들러(telnet_init때 정해줌)로 recv데이터를 보낸다.
+    이때 user_data는 우리가 받고자 하는 변수 장소 포인터, 즉 char* buf와 int nbytes로 하자.
+    (그렇다. 소켓에서 바로 받지 않고 일단 telnet_recv->핸들러로 보내줘야 한다.)
+    그 핸들러: char* buf에게 int nbytes만큼 쓰기. 그렇다, 그 핸들러가 ClientChannel_recv가 하던 일을 대신한다.
+
+    그 핸들러는 아마 이 파일(clientchannel.c)에서 정의해줘야할 것이다. 그걸 mainrun.c에서 가리키게 해주고.
+    이렇게 해도 되는 이유? 핸들러는 새로운 쓰레드로 파서 실행되는 것은 아닌 걸로 보인다. 그러므로 실행흐름은 쭉 이어지는 것으로 볼 수 있다.
+    */
     default:
         logInfo("[ClientChannel] Warning: Unexpected type for recv.");
         return -1;

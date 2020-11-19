@@ -46,6 +46,8 @@
 
 #include "libtelnet.h"
 
+#include <fcntl.h>
+
 #define MAX_USERS 64
 #define LINEBUFFER_SIZE 256
 
@@ -190,6 +192,7 @@ static void _event_handler(telnet_t *telnet, telnet_event_t *ev,
 	switch (ev->type) {
 	/* data received */
 	case TELNET_EV_DATA:
+		fprintf(stderr, "TELNET_EV_DATA\n");
 		_input(user, ev->data.buffer, ev->data.size);
 					telnet_negotiate(telnet, TELNET_WONT, TELNET_TELOPT_ECHO);
 			telnet_negotiate(telnet, TELNET_WILL, TELNET_TELOPT_ECHO);
@@ -316,6 +319,9 @@ int main(int argc, char **argv) {
 				fprintf(stderr, "accept() failed: %s\n", strerror(errno));
 				return 1;
 			}
+
+			int flag = fcntl(client_sock, F_GETFL, 0);
+    		fcntl(client_sock, F_SETFL, flag | O_NONBLOCK);
 
 			printf("Connection received.\n");
 

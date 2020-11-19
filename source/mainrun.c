@@ -1,15 +1,18 @@
 #include "globaltool.h"
 #include "clientchannel.h"
 #include "tdevchannel.h"
+#include "libtelnet.h"
 #include <libssh/server.h>
 #include <signal.h>
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <unistd.h>  //getopt
-#include <stdlib.h> //atoi
+#include <stdlib.h>  //atoi
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <errno.h>
 
-// TODO 데이터가 하드코딩 상태;
 #define DEFAULT_TDEV_FILE "/dev/ttyACM0"
 #define DEFAULT_TDEV_BAUD B115200
 #define DEFAULT_SSH_PORT 10001
@@ -23,8 +26,11 @@
 // Global variables
 /** 메인 루틴이 종료해야 하는지 알려줌 */
 static int mainStopFlag = 0;
-/** SSH Server bind object */
-ssh_bind sshBind;
+/** SSH Server Bind object */
+static ssh_bind sshBind;
+/** Telnet Server Listening socket */
+static int telnetListenSock;
+static struct sockaddr_in telnetListenAddr = {0};
 /** Target Device Channel */
 static TdevChannel tdchan;
 /** Client Channel List */
@@ -52,8 +58,6 @@ static int isAccountValid(const char * user, const char * pass) {
  * @returns 성공시 0, 실패시 음수
  */
 static int makeSshAcceptable(unsigned int bindport) {
-    //const unsigned int bindport = SSH_PORT;
-
     sshBind = ssh_bind_new();
     ssh_bind_options_set(sshBind, SSH_BIND_OPTIONS_DSAKEY, SSH_PATH_DSAKEY);
     ssh_bind_options_set(sshBind, SSH_BIND_OPTIONS_RSAKEY, SSH_PATH_RSAKEY);
@@ -67,12 +71,53 @@ static int makeSshAcceptable(unsigned int bindport) {
 }
 
 /**
+ * telnetListenSock를 세팅하여 Telnet서버로서 accept가 가능하도록 함
+ * @returns 성공시 0, 실패시 음수
+ */
+static int makeTelnetAcceptable(unsigned int bindport) {
+    int rs = 1; //reuse address option
+
+    if( (telnetListenSock = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
+        logInfo("Error creating a new socket: %s", strerror(errno));
+        return -1;
+    }
+    setsockopt(telnetListenSock, SOL_SOCKET, SO_REUSEADDR, (char*)&rs, sizeof rs);
+    
+    // Binding
+    telnetListenAddr.sin_family = AF_INET;
+    telnetListenAddr.sin_addr.s_addr = INADDR_ANY;
+    telnetListenAddr.sin_port = htons(bindport);
+    if((bind(telnetListenSock, (struct sockaddr *)&telnetListenAddr,
+            sizeof telnetListenAddr)) < 0) {
+        logInfo("Error invoking posix bind: %s", strerror(errno));
+        close(telnetListenSock);
+        return -1;
+    }
+
+    // Listening
+    if ( listen(telnetListenSock, 5) == -1 ) {
+        logInfo("Error invoking posix listen: %s", strerror(errno));
+        close(telnetListenSock);
+        return -1;
+    }
+    return 0;
+}
+
+/**
  * 더 이상 sshBind 필요없을 때
  */
 static void finalizeSshAcception() {
     ssh_bind_free(sshBind);
 }
 
+/**
+ * 더 이상 telnetListenSock 필요없을 때
+ */
+static void finalizeTelnetAcception() {
+    close(telnetListenSock);
+}
+
+// --------------------------
 
 /**
  * trSshAcceptor가 cancel되었을 때 메모리를 청소하기 위한 function.
@@ -224,6 +269,47 @@ static void * trSshAcceptor(void * payload)
 }
 
 /**
+ * 클라이언트 Telnet접속 등록(cclist)을 담당하는 쓰레드 루틴. 
+ * makeTelnetAcceptable이 사전에 실행되어야 함. 
+ * 기간: 메인 루틴이 가동중일 동안 항상
+ * @param payload 미사용
+ */
+static void * trTelnetAcceptor (void * payload) {
+    #define LOGPREFIX "[trTelnetAcceptor] "
+    static const telnet_telopt_t telopts[] = {
+        { TELNET_TELOPT_COMPRESS2,	TELNET_WILL, TELNET_DONT },
+        { -1, 0, 0 }
+    };
+    int rc = 0;
+    socklen_t addrlen;
+    int clientsockNewb = 0;
+    telnet_t * telnettrackerNewb;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+
+    logInfo(LOGPREFIX "Starting Telnet client-acception.");
+    while(1) {
+        addrlen = sizeof(telnetListenAddr);
+        clientsockNewb = accept( telnetListenSock,
+            (struct sockaddr *)&telnetListenAddr,
+            &addrlen );  //Blocking
+        if( clientsockNewb < 0 ) {
+            logInfo(LOGPREFIX "Error accepting a connection: %s", strerror(errno));
+            continue;
+        }
+
+        logInfo(LOGPREFIX "New client connected. checking...");
+        // Authentication
+        telnettrackerNewb = telnet_init( //TODO
+    }
+
+    logInfo(LOGPREFIX "Finished.");
+}
+
+
+// -------------------------------------------------
+
+/**
  * CCList_batchRecv에 쓰일 function
  */
 static void sendEachToTdev(const char * recvBuf, int nbytes)
@@ -234,12 +320,15 @@ static void sendEachToTdev(const char * recvBuf, int nbytes)
     TdevChannel_send(&tdchan, recvBuf, nbytes);
 }
 
+// -------------------------------------------------
+
 int main(int argc, char ** argv)
 {   
     int recvBytes = 0;  //TdevChannel_recv
     char recvBuf[RECVBUF_SIZE] = {'\0'};  //TdevChannel_recv
     // threads
     pthread_t tidSshAcceptor;
+    pthread_t tidTelnetAcceptor;
     // 초기화 설정값; 사용자로부터 가져올 수도 있음.
     char tdevFile[128] = DEFAULT_TDEV_FILE;
     unsigned int tdevBaud = DEFAULT_TDEV_BAUD;
@@ -267,11 +356,16 @@ int main(int argc, char ** argv)
     }
 
     // 초기화 단계
-    logInfo("Initializing the SSH server...", argv[0]);
+    logInfo("Initializing the SSH server...");
     if(makeSshAcceptable(bindportSsh) < 0) {
         logInfo("Failed in making SSH server acceptable.");
         logInfo("Please check if you don't have enough permission.");
         return 1;
+    }
+    logInfo("Initializing the telnet server...");
+    if(makeTelnetAcceptable(bindportTelnet) < 0) {
+        logInfo("Failed in making the telnet server acceptable.");
+        logInfo("Please check if you don't have enough permission.")
     }
     logInfo("Initializing the target device channel...");
     if(TdevChannel_init(&tdchan, tdevFile, tdevBaud) < 0) {
@@ -284,6 +378,10 @@ int main(int argc, char ** argv)
     sem_init(&mutex_cclist, 0, 1);
     if(pthread_create(&tidSshAcceptor, NULL, trSshAcceptor, NULL)) {
         logInfo("Failed in pthread_create tidSshAcceptor.");
+        return 1;
+    }
+    if(pthread_create(&tidTelnetAcceptor, NULL, trTelnetAcceptor, NULL)) {
+        logInfo("Failed in pthread_create tidTelnetAcceptor.");
         return 1;
     }
     // 프로그램 중단 명령 핸들링
@@ -319,11 +417,13 @@ int main(int argc, char ** argv)
     CCList_finalize(&cclist);
     sem_post(&mutex_cclist);
 
-    logInfo("Stopping client-acception routine...");
+    logInfo("Stopping client-acception routine (SSH)...");
     finalizeSshAcception();
+    finalizeTelnetAcception();
     pthread_cancel(tidSshAcceptor); //accept에 블럭돼있으면 빠져나오게 해준다.
-    pthread_join(tidSshAcceptor, NULL); 
-    //pthread_join(tidTelnetAcceptor, NULL);
+    pthread_join(tidSshAcceptor, NULL);
+    pthread_cancel(tidTelnetAcceptor);
+    pthread_join(tidTelnetAcceptor, NULL);
 
     logInfo("Finished.");
     return 0;
