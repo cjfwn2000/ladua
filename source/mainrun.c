@@ -300,7 +300,13 @@ static void * trTelnetAcceptor (void * payload) {
 
         logInfo(LOGPREFIX "New client connected. checking...");
         // Authentication
-        telnettrackerNewb = telnet_init( //TODO
+        //telnettrackerNewb = telnet_init(opts, eh, 0, )
+        telnettrackerNewb = ClientChannel_newTempTelnett();
+        telnet_negotiate(telnettrackerNewb, TELNET_WILL, TELNET_TELOPT_COMPRESS2);
+        telnet_printf(telnettrackerNewb, "Entern name: ");
+        telnet_negotiate(telnettrackerNewb, TELNET_WILL, TELNET_TELOPT_ECHO);
+
+        // TODO CCList 등록할 적에 넘겨줘야 할 물건: clientsockNewb, telnettrackerNewb
     }
 
     logInfo(LOGPREFIX "Finished.");
