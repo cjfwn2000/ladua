@@ -4,6 +4,7 @@
  */
 
 #include <libssh/server.h>
+#include "libtelnet.h"
 
 typedef enum _ClientType {
     SSH,
@@ -36,6 +37,16 @@ int ClientChannel_send(ClientChannel * c, const char * buf, int nbytes);
 void ClientChannel_close(ClientChannel * c);
 
 /**
+ * ClientChannel을 만들기 전 임시로 텔넷 셸 세션 확보를 위해 주어지는 telnet_t 객체입니다.
+ * telnet_init의 wrapper function 이라고 할 수 있습니다.
+ * 이후 CCList_addNewFromTelnet으로 새로운 ClientChannel을 만드는 데 쓰일 수 있을 것입니다.
+ * @param sock 클라이언트와 연결된 소켓 FD; 신규 telnet_t 객체에 연동되도록 하기 위함
+ * @returns 신규 telnet_t 객체를 가리키는 포인터
+ */
+telnet_t * newTempTelnett(int sock);
+
+
+/**
  * ClientChannel 관련 기능을 일괄처리하도록 도와주는 연결리스트(Linked List)입니다.
  */
 typedef struct _ClientChannelList {
@@ -53,6 +64,13 @@ void CCList_init(ClientChannelList * l);
  * @returns 그 추가된 객체로의 포인터
  */
 ClientChannel * CCList_addNewFromSSH(ClientChannelList * l, ssh_session sessOpened, ssh_channel chan);
+/**
+ * 신규 ClientChannel(텔넷접속)을 만들어 리스트에 추가합니다. 
+ * @param telnetTracker telnet_t 객체를 가리키지만 해당 클라이언트가 셸에 접속된 상태여야 합니다. 
+ * @param sock 위 telnetTracker와 연동하는 소켓 FD 객체입니다. 데이터 송수신을 위해 필요합니다.
+ * @returns 그 추가된 객체로의 포인터
+ */
+ClientChannel * CCList_addNewFromTelnet(ClientChannelList * l, telnet_t * telnetTracker, int sock);
 /**
  * 일괄처리입니다. 각 ClientChannel마다: 
  * - 받을 데이터가 있으면 그것을 인자로 삼는 fnRecvData을 호출합니다.

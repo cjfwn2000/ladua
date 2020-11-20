@@ -2,8 +2,47 @@
 #include "globaltool.h"
 #include <stdlib.h>
 #include <libssh/server.h>
+#include "libtelnet.h"
 
 #define RECVBUF_SIZE 256
+
+//// Private functions
+
+static void _telnetEvtHandler(telnet_t * tt, telnet_event_t * ev, void * userData)
+{
+    int sock = (intptr_t) userData;
+
+    switch (ev->type) {
+    // 받을 데이터 생김
+    case TELNET_EV_DATA:
+        logInfo("_telnetEvtHandler] Warning: Not implemented TELNET_EV_DATA.");
+        telnet_negotiate(tt, TELNET_WONT, TELNET_TELOPT_ECHO);
+        telnet_negotiate(tt, TELNET_WILL, TELNET_TELOPT_ECHO);
+        break;
+    // 보낼 데이터 생김
+    case TELNET_EV_SEND:
+        // _global_recvBytes_forTelnet = send(blahblah);
+        logInfo("_telnetEvtHandler] Warning: Still not returned into static global variables.");
+        send(sock, ev->data.buffer, (int)ev->data.size, 0);
+        break;
+        //TODO static global variable을 통한 return 구현이니까 그 variable에 mutex를 걸어야겠지.
+        //물론 mutex 진입 주체는 여기가 아니라 ClientChannel_recv다.
+        break;
+    // enable compress2 if accepted by client
+    case TELNET_EV_DO:
+        if(ev->neg.telopt == TELNET_TELOPT_COMPRESS2)
+            telnet_begin_compress2(tt);
+        break;
+    // Error
+    case TELNET_EV_ERROR:
+        logInfo("[_telnetEvtHandler] TELNET_EV_ERROR");
+        close(sock);
+        break;
+    // 그 외 이벤트 무시
+    default:
+        break;
+    }
+}
 
 //// ClientChannel
 
@@ -78,6 +117,17 @@ void ClientChannel_close(ClientChannel * c)
     ssh_disconnect(c->sshSess);
 }
 
+telnet_t * newTempTelnett(int sock)
+{
+    telnet_t * new;
+    static const telnet_telopt_t telopts[] = {
+        { TELNET_TELOPT_COMPRESS2,	TELNET_WILL, TELNET_DONT },
+        { -1, 0, 0 }
+    };
+
+    new = telnet_init(telopts, _telnetEvtHandler, 0, (void*)(intptr_t)sock);
+    return new;
+}
 
 //// ClientChannelList
 

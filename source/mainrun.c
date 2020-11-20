@@ -269,47 +269,59 @@ static void * trSshAcceptor(void * payload)
 }
 
 /**
- * 클라이언트 Telnet접속 등록(cclist)을 담당하는 쓰레드 루틴. 
+ * 클라이언트 텔넷접속 등록(cclist)을 담당하는 쓰레드 루틴. 
  * makeTelnetAcceptable이 사전에 실행되어야 함. 
  * 기간: 메인 루틴이 가동중일 동안 항상
  * @param payload 미사용
  */
 static void * trTelnetAcceptor (void * payload) {
-    #define LOGPREFIX "[trTelnetAcceptor] "
-    static const telnet_telopt_t telopts[] = {
-        { TELNET_TELOPT_COMPRESS2,	TELNET_WILL, TELNET_DONT },
-        { -1, 0, 0 }
-    };
-    int rc = 0;
+    #define LOGPREF_T "[trTelnetAcceptor] "
     socklen_t addrlen;
     int clientsockNewb = 0;
     telnet_t * telnettrackerNewb;
+    int authenticated = 0;
 
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 
-    logInfo(LOGPREFIX "Starting Telnet client-acception.");
+    logInfo(LOGPREF_T "Starting Telnet client-acception.");
     while(1) {
         addrlen = sizeof(telnetListenAddr);
         clientsockNewb = accept( telnetListenSock,
             (struct sockaddr *)&telnetListenAddr,
             &addrlen );  //Blocking
         if( clientsockNewb < 0 ) {
-            logInfo(LOGPREFIX "Error accepting a connection: %s", strerror(errno));
+            logInfo(LOGPREF_T "Error accepting a connection: %s", strerror(errno));
             continue;
         }
 
-        logInfo(LOGPREFIX "New client connected. checking...");
+        logInfo(LOGPREF_T "New client connected. checking...");
         // Authentication
-        //telnettrackerNewb = telnet_init(opts, eh, 0, )
-        telnettrackerNewb = ClientChannel_newTempTelnett();
+        //telnettrackerNewb = telnet_init(opts, eh, 0, NULL);
+        authenticated = 0;
+        telnettrackerNewb = newTempTelnett(clientsockNewb);
         telnet_negotiate(telnettrackerNewb, TELNET_WILL, TELNET_TELOPT_COMPRESS2);
-        telnet_printf(telnettrackerNewb, "Entern name: ");
+        telnet_printf(telnettrackerNewb, "Enter name: ");
         telnet_negotiate(telnettrackerNewb, TELNET_WILL, TELNET_TELOPT_ECHO);
 
+        if(!authenticated) {
+            logInfo(LOGPREF_T "Error Authentication");
+            telnet_free(telnettrackerNewb);
+            close(clientsockNewb);
+        }
+        
+        logInfo(LOGPREF_T "Success: Shell-opened session");
+
+
         // TODO CCList 등록할 적에 넘겨줘야 할 물건: clientsockNewb, telnettrackerNewb
+        // Q. 이미 ClientChannel_newTempTelnett(clientsockNewb)로 
+        // clientsockNewb가 telnet_t객체에 포함된 거 같은데 굳이 또 넣어주나?
+        // Redundancy 아닌가?
+        // A. ClientChannel_close에서 소켓까지 직접 닫아줘야 하기 때문이다.
+        // libtelnet에서 소켓을 닫아주지 않는다.
     }
 
-    logInfo(LOGPREFIX "Finished.");
+    logInfo(LOGPREF_T "Finished.");
+    return NULL;
 }
 
 
@@ -371,7 +383,7 @@ int main(int argc, char ** argv)
     logInfo("Initializing the telnet server...");
     if(makeTelnetAcceptable(bindportTelnet) < 0) {
         logInfo("Failed in making the telnet server acceptable.");
-        logInfo("Please check if you don't have enough permission.")
+        logInfo("Please check if you don't have enough permission.");
     }
     logInfo("Initializing the target device channel...");
     if(TdevChannel_init(&tdchan, tdevFile, tdevBaud) < 0) {
