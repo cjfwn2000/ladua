@@ -39,11 +39,14 @@ void ClientChannel_close(ClientChannel * c);
 /**
  * ClientChannel을 만들기 전 임시로 텔넷 셸 세션 확보를 위해 주어지는 telnet_t 객체입니다.
  * telnet_init의 wrapper function 이라고 할 수 있습니다.
- * 이후 CCList_addNewFromTelnet으로 새로운 ClientChannel을 만드는 데 쓰일 수 있을 것입니다.
+ * 클라이언트가 인증절차를 밟도록 합니다. (계정정보 입력 요구)
+ * 후에 'sock'과 '신규telnet_t객체'를 가지고 CCList_addNewFromTelnet에 넘겨주어
+ * 새로운 ClientChannel을 만드는 데 쓰일 수 있을 것입니다.
  * @param sock 클라이언트와 연결된 소켓 FD; 신규 telnet_t 객체에 연동되도록 하기 위함
- * @returns 신규 telnet_t 객체를 가리키는 포인터
+ * @returns 신규 telnet_t 객체를 가리키는 포인터; 인증 실패시 NULL
+ * @warning sock을 close하는 의무는 아직 ClientChannel 모듈로 넘어오지 않았습니다. 따라서 인증 실패 시 더 이상 쓸모가 없어진 sock은 호출자가 직접 닫아야 합니다.
  */
-telnet_t * newTempTelnett(int sock);
+telnet_t * ClientChannel_newTempTelnettWithAuth(int sock);
 
 
 /**

@@ -280,6 +280,10 @@ static void * trTelnetAcceptor (void * payload) {
     int clientsockNewb = 0;
     telnet_t * telnettrackerNewb;
     int authenticated = 0;
+    char loginName[64];
+    int loginNameLength = 0;
+
+    int rc = 0;
 
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 
@@ -295,19 +299,33 @@ static void * trTelnetAcceptor (void * payload) {
         }
 
         logInfo(LOGPREF_T "New client connected. checking...");
-        // Authentication
-        //telnettrackerNewb = telnet_init(opts, eh, 0, NULL);
-        authenticated = 0;
-        telnettrackerNewb = newTempTelnett(clientsockNewb);
-        telnet_negotiate(telnettrackerNewb, TELNET_WILL, TELNET_TELOPT_COMPRESS2);
-        telnet_printf(telnettrackerNewb, "Enter name: ");
-        telnet_negotiate(telnettrackerNewb, TELNET_WILL, TELNET_TELOPT_ECHO);
+        // New TelnetTracker with Authentication
+        telnettrackerNewb = ClientChannel_newTempTelnettWithAuth(clientsockNewb);
+        if(telnettrackerNewb == NULL) {
+            logInfo(LOGPREF_T "Error Authentication");
+            close(clientsockNewb);
+        }
+        // 이제 telnettrackerNewb와 clientsockNewb 둘 다 intact한 상태
 
+        
+
+        /*
+        telnet_negotiate(telnettrackerNewb, TELNET_WILL, TELNET_TELOPT_COMPRESS2);
+        telnet_negotiate(telnettrackerNewb, TELNET_WILL, TELNET_TELOPT_ECHO);
+        do {
+            telnet_printf(telnettrackerNewb, "Login as: ");
+            rc = recv(clientsockNewb, loginName, sizeof loginName, 0);
+            telnet_recv(telnettrackerNewb, loginName, rc);
+            logInfo("!!rc = %d", rc);
+            logInfo("!!Name = %.*s", loginNameLength, loginName);
+        } while (!authenticated);
+        
         if(!authenticated) {
             logInfo(LOGPREF_T "Error Authentication");
             telnet_free(telnettrackerNewb);
             close(clientsockNewb);
         }
+        */
         
         logInfo(LOGPREF_T "Success: Shell-opened session");
 

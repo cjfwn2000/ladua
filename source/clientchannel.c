@@ -117,17 +117,25 @@ void ClientChannel_close(ClientChannel * c)
     ssh_disconnect(c->sshSess);
 }
 
-telnet_t * newTempTelnett(int sock)
+telnet_t * ClientChannel_newTempTelnettWithAuth(int sock)
 {
-    telnet_t * new;
+    telnet_t * newTT;
     static const telnet_telopt_t telopts[] = {
         { TELNET_TELOPT_COMPRESS2,	TELNET_WILL, TELNET_DONT },
         { -1, 0, 0 }
     };
 
-    new = telnet_init(telopts, _telnetEvtHandler, 0, (void*)(intptr_t)sock);
-    return new;
+    newTT = telnet_init(telopts, _telnetEvtHandler, 0, (void*)(intptr_t)sock);
+
+    // TODO 참조 : https://github.com/seanmiddleditch/libtelnet/blob/develop/util/telnet-test.c
+
+    telnet_negotiate(telnettrackerNewb, TELNET_WILL, TELNET_TELOPT_COMPRESS2);
+    telnet_negotiate(telnettrackerNewb, TELNET_WILL, TELNET_TELOPT_ECHO);
+    
+
+    return NULL;
 }
+
 
 //// ClientChannelList
 
