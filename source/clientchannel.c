@@ -5,6 +5,7 @@
 #include "libtelnet.h"
 #include <string.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #define RECVBUF_SIZE 256
 
@@ -13,7 +14,8 @@
 // 흔히 생각하길 메시지를 recv(소켓, ...)으로 받으려 하는데
 // 소켓에 들어오는 것이 클라이언트가 실제 타이핑한 메시지 뿐 아니라 IAC DO 메시지도 포함되므로
 // 그 클라이언트 실제 메시지를 받고자 하면 recv가 아닌 _TBP_recv을 이용해야 함
-/** @returns 읽은 데이터 바이트 길이; 에러일 시 음수; 0인 경우 호출자가 EOF여부 확인바람 */
+/** @returns 읽은 데이터 바이트 길이; 에러 혹은 읽을데이터 없었을 시 음수; 연결 끊어질 시 0
+  * @warning libssh와 달리 C Socket fd에 대한 recv는 "읽을데이터없음"일 때 음수(-1) */
 static int _TBP_recv(TelnetBackpack * tbp, char * buf, int nbytes)
 {
     int sockRecieved = 0;
@@ -34,6 +36,7 @@ static int _TBP_recv(TelnetBackpack * tbp, char * buf, int nbytes)
             // 판별 결과 기대한 게 맞다면 그것으로 종결한다.
             // 판별 결과 다른 거였다면 다시 소켓 수신을 시도한다.
             if(tbp->tempDataTypeFlag) {
+                tbp->tempDataTypeFlag = 0;  //궅이 다시 =0 하는 이유: defensive programming
                 return tbp->tempRecvBytes;
                 // 최종 상황: buf에 재분석된 received data 저장[0..tbp->tbp->tempRecvBytes-1]
                 // , return값은 tbp->tempRecvBytes
@@ -41,9 +44,9 @@ static int _TBP_recv(TelnetBackpack * tbp, char * buf, int nbytes)
                 continue;
             }
         } else {
-            // 받은게 없거나 에러 표지였어도 종결
+            // 받은게 없거나 에러이거나 연결 끊어짐
             break;
-            // 최종상황: buf은 무효함, return값은 0 혹은 -1
+            // 최종상황: buf은 무효함, return값은 0 혹은 음수
         }
     } while(1);
 
@@ -197,9 +200,16 @@ int ClientChannel_recv(ClientChannel * c, char * buf, int nbytes)
         
     case TELNET:
         readed = _TBP_recv(c->telnetBackpack, buf, nbytes);
-        logInfo("ClientChannel_recv")
-        //TODO
-
+        // Note: _TBP_recv의 return은 sys/socket.h recv의 return과 같다.
+        // 혹시 연결이 끊어졌는지 확인
+        if(readed == 0)
+            return -1;
+        // _TBP_recv가 음수를 return했지만 아직 끊어진 게 아닌 경우, 우리는 0를 return해야 한다.
+        if(readed < 0 && errno == EAGAIN)
+            return 0;
+        return readed;
+        break;
+        
     default:
         logInfo("[ClientChannel] Warning: Unexpected type for recv.");
         return -1;
@@ -218,7 +228,11 @@ int ClientChannel_send(ClientChannel * c, const char * buf, int nbytes)
         return writed;
         break;
         
-    //case TELNET:
+    case TELNET:
+        writed = send(c->telnetBackpack->sock, buf, nbytes, 0);
+        return writed;
+        break;
+
     default:
         logInfo("[ClientChannel] Warning: Unexpected type for send.");
         return -1;
