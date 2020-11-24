@@ -278,17 +278,14 @@ static void * trTelnetAcceptor (void * payload) {
     #define LOGPREF_T "[trTelnetAcceptor] "
     socklen_t addrlen;
     int clientsockNewb = 0;
-    telnet_t * telnettrackerNewb;
-    int authenticated = 0;
-    char loginName[64];
-    int loginNameLength = 0;
-
-    int rc = 0;
+    //telnet_t * telnettrackerNewb;
+    TelnetBackpack * telbpackNewb;
 
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 
     logInfo(LOGPREF_T "Starting Telnet client-acception.");
     while(1) {
+        // Accept new client socket
         addrlen = sizeof(telnetListenAddr);
         clientsockNewb = accept( telnetListenSock,
             (struct sockaddr *)&telnetListenAddr,
@@ -298,44 +295,28 @@ static void * trTelnetAcceptor (void * payload) {
             continue;
         }
 
+        // New TelnetBackpack with Authentication
         logInfo(LOGPREF_T "New client connected. checking...");
-        // New TelnetTracker with Authentication
-        telnettrackerNewb = ClientChannel_newTempTelnettWithAuth(clientsockNewb);
-        if(telnettrackerNewb == NULL) {
+        telbpackNewb = TelnetBackpack_newWithAuth(clientsockNewb, isAccountValid);
+        if(telbpackNewb == NULL) {
             logInfo(LOGPREF_T "Error Authentication");
             close(clientsockNewb);
+            continue;
         }
-        // 이제 telnettrackerNewb와 clientsockNewb 둘 다 intact한 상태
 
-        
-
-        /*
-        telnet_negotiate(telnettrackerNewb, TELNET_WILL, TELNET_TELOPT_COMPRESS2);
-        telnet_negotiate(telnettrackerNewb, TELNET_WILL, TELNET_TELOPT_ECHO);
-        do {
-            telnet_printf(telnettrackerNewb, "Login as: ");
-            rc = recv(clientsockNewb, loginName, sizeof loginName, 0);
-            telnet_recv(telnettrackerNewb, loginName, rc);
-            logInfo("!!rc = %d", rc);
-            logInfo("!!Name = %.*s", loginNameLength, loginName);
-        } while (!authenticated);
-        
-        if(!authenticated) {
-            logInfo(LOGPREF_T "Error Authentication");
-            telnet_free(telnettrackerNewb);
-            close(clientsockNewb);
+        // 이제 telbpackNewb가 가용한 상태
+        // 그러므로 클라이언트에 추가해주자.
+        logInfo(LOGPREFIX "Success: Shell-opened session");
+        sem_wait(&mutex_cclist);
+        if(!mainStopFlag)
+            CCList_addNewFromTelnet(&cclist, telbpackNewb);
+        else {
+            logInfo(LOGPREFIX "Because of mainStopFlag, discarding the very last client session.");
+            close(telbpackNewb->sock);
+            telnet_free(telbpackNewb->tracker);
+            free(telbpackNewb);
         }
-        */
-        
-        logInfo(LOGPREF_T "Success: Shell-opened session");
-
-
-        // TODO CCList 등록할 적에 넘겨줘야 할 물건: clientsockNewb, telnettrackerNewb
-        // Q. 이미 ClientChannel_newTempTelnett(clientsockNewb)로 
-        // clientsockNewb가 telnet_t객체에 포함된 거 같은데 굳이 또 넣어주나?
-        // Redundancy 아닌가?
-        // A. ClientChannel_close에서 소켓까지 직접 닫아줘야 하기 때문이다.
-        // libtelnet에서 소켓을 닫아주지 않는다.
+        sem_post(&mutex_cclist);
     }
 
     logInfo(LOGPREF_T "Finished.");

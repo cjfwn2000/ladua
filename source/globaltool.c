@@ -1,6 +1,7 @@
 #include "globaltool.h"
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 void logInfo(const char *fmt, ... )
 {
@@ -28,4 +29,18 @@ static void dump16(char prefix, const char *buffer, int length) {
 void logDump(char prefix, const char *buffer, int length) {
     for (; length >= 0; length -= 16, buffer += 16)
         dump16(prefix, buffer, length > 16 ? 16 : length);
+}
+
+char * rtrim(char *str, const char *seps)
+{
+    int i;
+    if (seps == NULL) {
+        seps = "\t\n\v\f\r ";
+    }
+    i = strlen(str) - 1;
+    while (i >= 0 && strchr(seps, str[i]) != NULL) {
+        str[i] = '\0';
+        i--;
+    }
+    return str;
 }
