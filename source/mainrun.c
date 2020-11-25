@@ -25,10 +25,13 @@
 #define SSH_PATH_RSAKEY "/etc/ssh/ssh_host_rsa_key"
 #define RECVBUF_SIZE 256
 #define DEFAULT_TELNET_PORT 10002
-#define ACCOUNT_USER "mobidigm"
-#define ACCOUNT_PASS "dj2020"
+#define DEFAULT_ACCOUNT_USER "mobidigm"
+#define DEFAULT_ACCOUNT_PASS "dj2020"
 
 // Global variables
+/** 서버에 설정된 계정정보 */
+static char accountUsername[64] = DEFAULT_ACCOUNT_USER;
+static char accountPassword[64] = DEFAULT_ACCOUNT_PASS;
 /** 메인 루틴이 종료해야 하는지 알려줌 */
 static int mainStopFlag = 0;
 /** SSH Server Bind object */
@@ -55,7 +58,7 @@ static void sigintHandlerToStop(int signum) {
  * @returns 올바를 시 1(True), 아닐 시 0(False)
  */
 static int isAccountValid(const char * user, const char * pass) {
-    return (strcmp(user, ACCOUNT_USER) == 0) && (strcmp(pass, ACCOUNT_PASS) == 0);
+    return (strcmp(user, accountUsername) == 0) && (strcmp(pass, accountPassword) == 0);
 }
 
 /**
@@ -341,12 +344,26 @@ int main(int argc, char ** argv)
     unsigned int tdevBaud = DEFAULT_TDEV_BAUD;
     unsigned int bindportSsh = DEFAULT_SSH_PORT;
     unsigned int bindportTelnet = DEFAULT_TELNET_PORT;
+    // 사용자 지정 패스워드 (필요한 경우)
+    char customPass[sizeof accountPassword] = "";
 
     // 사용자로부터 설정값 가져오기
-    // Usage: serialserver -f /dev/ttyACM0 -b 115200 -s 10001 -t 10002
+    // Usage: serialserver -u mobidigm -p -f /dev/ttyACM0 -s 10001 -t 10002
     int opt;
-    while( (opt=getopt(argc, argv, "f:b:s:t:")) != -1 ) {
+    while( (opt=getopt(argc, argv, "u:pf:b:s:t:")) != -1 ) {
         switch(opt) {
+        case 'u': //login User name
+            strncpy(accountUsername, optarg, sizeof accountUsername - 1);
+            break;
+        case 'p': //login Password
+            logInfo("Please input your new password:");
+            if( ! getPasswordInto(customPass, sizeof customPass) ) {
+                logInfo("Error: Failed to set your new password.");
+                return 1;
+            } else {
+                strncpy(accountPassword, customPass, sizeof accountPassword - 1);
+            }
+            break;
         case 'f': //File path dev
             strncpy(tdevFile, optarg, sizeof tdevFile - 1);
             break;
