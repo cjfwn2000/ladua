@@ -74,9 +74,6 @@ static void _telnetEvtHandler(telnet_t * tt, telnet_event_t * ev, void * userDat
         // _global_recvBytes_forTelnet = send(blahblah);
         send(tbp->sock, ev->data.buffer, (int)ev->data.size, 0);
         break;
-        //TODO static global variable을 통한 return 구현이니까 그 variable에 mutex를 걸어야겠지.
-        //물론 mutex 진입 주체는 여기가 아니라 ClientChannel_recv다.
-        break;
     // enable compress2 if accepted by client
     case TELNET_EV_DO:
         if(ev->neg.telopt == TELNET_TELOPT_COMPRESS2)
@@ -147,11 +144,11 @@ TelnetBackpack * TelnetBackpack_newWithAuth(int sock, int (*isAccountValid)(cons
         
         authenticated = isAccountValid(loginName, loginPass);
         if(authenticated) {
+            telnet_printf(newTT, "\n");
             telnet_negotiate(newTT, TELNET_WONT, TELNET_TELOPT_ECHO);
             break;
         } else if(try+1 < MAX_TRY)
-            telnet_printf(newTT, "Sorry, try again.");
-        telnet_printf(newTT, "\n");
+            telnet_printf(newTT, "\nSorry, try again.\n");
     }
     if(authenticated) {
         sockFL = fcntl(sock, F_GETFL, 0);

@@ -59,14 +59,35 @@ typedef struct _ClientChannel {
 
 /**
  * ClientChannel 객체를 초기화합니다. (SSH) 
- * @param sessOpened SSH 세션 객체를 가리키지만 해당 클라이언트가 셸에 접속된 상태여야 합니다. 
+ * @param sessOpened SSH 세션 객체를 가리키지만 해당 클라이언트가 SSH셸에 접속된 상태여야 합니다. 
  * @param chan sessOpened에서 파생된 ssh_channel 객체여야 합니다. 데이터 송수신을 위해 필요합니다.
+ * @returns 성공시 0
  */
 int ClientChannel_initFromSsh(ClientChannel * c, ssh_session sessOpened, ssh_channel chan);
-//TODO documentations....
+/**
+ * ClientChannel 객체를 초기화합니다. (텔넷)
+ * @param tbp TelnetBackpack 객체를 가리키지만 해당 클라이언트가 텔넷셸에 접속된 상태여야 합니다.
+ * @returns 성공시 0
+ */
 int ClientChannel_initFromTelnet(ClientChannel * c, TelnetBackpack * tbp);
+/**
+ * 클라이언트로부터 데이터를 읽습니다.
+ * Non-blocking이기 때문에 당장 들어온 것이 없다면 0이 return될 수 있습니다.
+ * @param buf 읽을 데이터 들어가는 공간
+ * @param nbytes 읽을 최대 바이트 길이
+ * @returns 읽은 데이터 바이트 길이; 에러 혹은 EOF일 시 음수
+ */
 int ClientChannel_recv(ClientChannel * c, char * buf, int nbytes);
+/**
+ * 클라이언트에게 데이터를 전송합니다.
+ * @param buf 쓸 데이터
+ * @param nbytes 쓸 데이터의 바이트 길이
+ * @returns 쓴 데이터의 바이트 길이
+ */
 int ClientChannel_send(ClientChannel * c, const char * buf, int nbytes);
+/**
+ * 클라이언트와 연결을 끊습니다.
+ */ 
 void ClientChannel_close(ClientChannel * c);
 
 

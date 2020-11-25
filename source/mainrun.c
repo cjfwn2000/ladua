@@ -1,3 +1,8 @@
+/**
+ * Mobidigm
+ * CNU Smartdatalab Lee cheolju
+ */
+
 #include "globaltool.h"
 #include "clientchannel.h"
 #include "tdevchannel.h"
@@ -254,14 +259,7 @@ static void * trSshAcceptor(void * payload)
         logInfo(LOGPREFIX "Success: Shell-opened session");
         // 클라이언트 리스트에 추가한다.
         sem_wait(&mutex_cclist);
-        if(!mainStopFlag)
-            CCList_addNewFromSSH(&cclist, sessionNewb, chanNewb);
-        else {
-            logInfo(LOGPREFIX "Because of mainStopFlag, discarding the very last client session.");
-            ssh_channel_free(chanNewb);
-            ssh_disconnect(sessionNewb);
-            ssh_free(sessionNewb);
-        }
+        CCList_addNewFromSSH(&cclist, sessionNewb, chanNewb);
         sem_post(&mutex_cclist);
     }
 
@@ -308,14 +306,7 @@ static void * trTelnetAcceptor (void * payload) {
         // 그러므로 클라이언트에 추가해주자.
         logInfo(LOGPREFIX "Success: Shell-opened session");
         sem_wait(&mutex_cclist);
-        if(!mainStopFlag)
-            CCList_addNewFromTelnet(&cclist, telbpackNewb);
-        else {
-            logInfo(LOGPREFIX "Because of mainStopFlag, discarding the very last client session.");
-            close(telbpackNewb->sock);
-            telnet_free(telbpackNewb->tracker);
-            free(telbpackNewb);
-        }
+        CCList_addNewFromTelnet(&cclist, telbpackNewb);
         sem_post(&mutex_cclist);
     }
 
@@ -332,7 +323,6 @@ static void * trTelnetAcceptor (void * payload) {
 static void sendEachToTdev(const char * recvBuf, int nbytes)
 {
     // recvBuf[0..nbytes-1]
-    logInfo("< A client sends...");
     logDump('<', recvBuf, nbytes);
     TdevChannel_send(&tdchan, recvBuf, nbytes);
 }
