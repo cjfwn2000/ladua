@@ -1,6 +1,7 @@
 /**
  * Mobidigm
  * CNU Smartdatalab Lee cheolju
+ * 시리얼 서버; 시리얼출력기기의 데이터를 전달해주는 셸 서버
  */
 
 #include "globaltool.h"
@@ -54,15 +55,15 @@ static void sigintHandlerToStop(int signum) {
 }
 
 /**
- * 주어진 user, pass가 올바른 계정인지 확인
- * @returns 올바를 시 1(True), 아닐 시 0(False)
+ * 주어진 user, pass가 올바른 계정인지 확인합니다.
+ * @returns 올바를 시 1, 아닐 시 0
  */
 static int isAccountValid(const char * user, const char * pass) {
     return (strcmp(user, accountUsername) == 0) && (strcmp(pass, accountPassword) == 0);
 }
 
 /**
- * sshBind를 세팅하여 SSH서버로서 ssh_bind_accept가 가능하도록 함
+ * 전역변수 sshBind를 세팅하여 SSH서버로서 ssh_bind_accept가 가능하도록 합니다.
  * @returns 성공시 0, 실패시 음수
  */
 static int makeSshAcceptable(unsigned int bindport) {
@@ -79,7 +80,7 @@ static int makeSshAcceptable(unsigned int bindport) {
 }
 
 /**
- * telnetListenSock를 세팅하여 Telnet서버로서 accept가 가능하도록 함
+ * 전역변수 telnetListenSock를 세팅하여 텔넷서버로서 accept가 가능하도록 합니다.
  * @returns 성공시 0, 실패시 음수
  */
 static int makeTelnetAcceptable(unsigned int bindport) {
@@ -112,14 +113,14 @@ static int makeTelnetAcceptable(unsigned int bindport) {
 }
 
 /**
- * 더 이상 sshBind 필요없을 때
+ * 더 이상 SSH서버 작동을 하지 않을 때 호출합니다.
  */
 static void finalizeSshAcception() {
     ssh_bind_free(sshBind);
 }
 
 /**
- * 더 이상 telnetListenSock 필요없을 때
+ * 더 이상 텔넷서버 작동을 하지 않을 때 호출합니다.
  */
 static void finalizeTelnetAcception() {
     close(telnetListenSock);
@@ -140,8 +141,8 @@ static void trSshAcceptor_cleanup(void * payload)
 
 /**
  * 클라이언트 SSH접속 등록(cclist)을 담당하는 쓰레드 루틴. 
- * makeSshAcceptable이 사전에 실행되어야 함. 
- * 기간: 메인 루틴이 가동중일 동안 항상
+ * makeSshAcceptable이 사전에 실행되어야 합니다. 
+ * (기간: 메인 루틴이 가동중일 동안 항상)
  * @param payload 미사용
  */
 static void * trSshAcceptor(void * payload)
@@ -271,8 +272,8 @@ static void * trSshAcceptor(void * payload)
 
 /**
  * 클라이언트 텔넷접속 등록(cclist)을 담당하는 쓰레드 루틴. 
- * makeTelnetAcceptable이 사전에 실행되어야 함. 
- * 기간: 메인 루틴이 가동중일 동안 항상
+ * makeTelnetAcceptable이 사전에 실행되어야 합니다. 
+ * (기간: 메인 루틴이 가동중일 동안 항상)
  * @param payload 미사용
  */
 static void * trTelnetAcceptor (void * payload) {
@@ -321,7 +322,8 @@ static void * trTelnetAcceptor (void * payload) {
 // -------------------------------------------------
 
 /**
- * CCList_batchRecv에 쓰일 function
+ * CCList_batchRecv에 쓰일 function. 
+ * 클라이언트로부터 온 데이터를 목표기기에 전달합니다. 
  */
 static void sendEachToTdev(const char * recvBuf, int nbytes)
 {
