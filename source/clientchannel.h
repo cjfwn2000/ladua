@@ -1,4 +1,5 @@
 /**
+ * @file clientchannel.h
  * Mobidigm
  * CNU Smartdatalab Lee cheolju
  */

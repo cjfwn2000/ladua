@@ -1,4 +1,5 @@
 /**
+ * @file mainrun.c
  * Mobidigm
  * CNU Smartdatalab Lee cheolju
  * 시리얼 서버; 시리얼출력기기의 데이터를 전달해주는 셸 서버
