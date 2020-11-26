@@ -20,6 +20,8 @@
 ## Quickstart
 
 1. 빌드에 필요한 라이브러리 설치를 확인합니다.
+    * glibc (libpthread가 포함됨)
+    * libssh
     ```
     (Archlinux계열)
     # pacman -S glibc
